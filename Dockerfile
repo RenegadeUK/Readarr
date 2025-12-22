@@ -17,13 +17,23 @@ COPY . .
 # Build backend + frontend using repo scripts (matches upstream intent)
 RUN chmod +x ./build.sh && ./build.sh
 
-# build.sh typically writes to _output; copy the whole output (safe)
-# (we'll copy it into the runtime image below)
+# ---- runtime: minimal .NET runtime ----
+FROM mcr.microsoft.com/dotnet/aspnet:6.0
 
-# ---- runtime: use linuxserver image and overlay binaries ----
-FROM lscr.io/linuxserver/readarr:develop
+# Create app user
+RUN groupadd -g 1000 readarr && \
+    useradd -u 1000 -g readarr -d /app -s /bin/bash readarr
 
-# linuxserver readarr lives here:
-# /app/readarr/bin
-# Overlay the built output into the app folder.
-COPY --from=build /src/_output/ /app/readarr/bin/
+WORKDIR /app/readarr/bin
+
+# Copy built application
+COPY --from=build /src/_output/ ./
+
+# Set permissions
+RUN chown -R readarr:readarr /app
+
+USER readarr
+
+EXPOSE 8787
+
+ENTRYPOINT ["./Readarr", "-nobrowser", "-data=/config"]
