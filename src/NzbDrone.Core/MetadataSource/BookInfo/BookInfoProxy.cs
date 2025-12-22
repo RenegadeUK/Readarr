@@ -518,20 +518,31 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 return books;
             }
 
-            var authors = resource.Authors.Select(MapAuthorMetadata).ToDictionary(x => x.ForeignAuthorId, x => x);
-            var series = resource.Series.Select(MapSeries).ToList();
+            var authors = (resource.Authors ?? new List<AuthorResource>()).Select(MapAuthorMetadata).ToDictionary(x => x.ForeignAuthorId, x => x);
+            var series = (resource.Series ?? new List<SeriesResource>()).Select(MapSeries).ToList();
 
-            foreach (var work in resource.Works)
+            foreach (var work in resource.Works ?? new List<WorkResource>())
             {
                 var book = MapBook(work);
-                var authorId = work.Books.OrderByDescending(b => b.AverageRating * b.RatingCount).First().Contributors.First().ForeignId.ToString();
+                var books = work?.Books ?? new List<BookResource>();
+                var bookWithContributors = books
+                    .Where(b => b.Contributors?.Any() ?? false)
+                    .OrderByDescending(b => b.AverageRating * b.RatingCount)
+                    .FirstOrDefault();
+                
+                if (bookWithContributors == null)
+                {
+                    continue;
+                }
+                
+                var authorId = bookWithContributors.Contributors.First().ForeignId.ToString();
 
                 AddDbIds(authorId, book, authors);
 
                 books.Add(book);
             }
 
-            MapSeriesLinks(series, books, resource.Series);
+            MapSeriesLinks(series, books, resource.Series ?? new List<SeriesResource>());
 
             return books;
         }
@@ -741,10 +752,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             var book = MapBook(resource);
             var authorId = GetAuthorId(resource).ToString();
-            var metadata = resource.Authors.Select(MapAuthorMetadata).ToList();
+            var metadata = (resource.Authors ?? new List<AuthorResource>()).Select(MapAuthorMetadata).ToList();
 
-            var series = resource.Series.Select(MapSeries).ToList();
-            MapSeriesLinks(series, new List<Book> { book }, resource.Series);
+            var series = (resource.Series ?? new List<SeriesResource>()).Select(MapSeries).ToList();
+            MapSeriesLinks(series, new List<Book> { book }, resource.Series ?? new List<SeriesResource>());
 
             return Tuple.Create(authorId, book, metadata);
         }
@@ -805,16 +816,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         {
             var metadata = MapAuthorMetadata(resource);
 
-            var books = resource.Works
+            var books = (resource.Works ?? new List<WorkResource>())
                 .Where(x => x.ForeignId > 0 && GetAuthorId(x) == resource.ForeignId)
                 .Select(MapBook)
                 .ToList();
 
             books.ForEach(x => x.AuthorMetadata = metadata);
 
-            var series = resource.Series.Select(MapSeries).ToList();
+            var series = (resource.Series ?? new List<SeriesResource>()).Select(MapSeries).ToList();
 
-            MapSeriesLinks(series, books, resource.Series);
+            MapSeriesLinks(series, books, resource.Series ?? new List<SeriesResource>());
 
             var result = new Author
             {
@@ -838,11 +849,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
 
             // only take series where there are some works
-            foreach (var s in resource.Where(x => x.LinkItems.Any()))
+            foreach (var s in resource.Where(x => x.LinkItems?.Any() ?? false))
             {
                 if (seriesDict.TryGetValue(s.ForeignId.ToString(), out var curr))
                 {
-                    curr.LinkItems = s.LinkItems.Where(x => x.ForeignWorkId != 0 && bookDict.ContainsKey(x.ForeignWorkId.ToString())).Select(l => new SeriesBookLink
+                    curr.LinkItems = (s.LinkItems ?? new List<SeriesBookLinkResource>()).Where(x => x.ForeignWorkId != 0 && bookDict.ContainsKey(x.ForeignWorkId.ToString())).Select(l => new SeriesBookLink
                     {
                         Book = bookDict[l.ForeignWorkId.ToString()],
                         Series = curr,
@@ -888,7 +899,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             if (resource.Books != null)
             {
-                book.Editions = resource.Books.Select(x => MapEdition(x)).ToList();
+                book.Editions = (resource.Books ?? new List<BookResource>()).Select(x => MapEdition(x)).ToList();
 
                 // monitor the most popular release
                 var mostPopular = book.Editions.Value.MaxBy(x => x.Ratings.Popularity);
@@ -987,7 +998,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private static int GetAuthorId(WorkResource b)
         {
-            return b.Books.OrderByDescending(x => x.RatingCount * x.AverageRating).FirstOrDefault(x => x.Contributors.Any())?.Contributors.First().ForeignId ?? 0;
+            var books = b?.Books ?? new List<BookResource>();
+            var bookWithContributors = books
+                .Where(x => x.Contributors?.Any() ?? false)
+                .OrderByDescending(x => x.RatingCount * x.AverageRating)
+                .FirstOrDefault();
+            
+            return bookWithContributors?.Contributors?.FirstOrDefault()?.ForeignId ?? 0;
         }
     }
 }
