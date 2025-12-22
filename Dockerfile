@@ -14,8 +14,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY . .
 
-# Build backend + frontend using repo scripts (matches upstream intent)
-RUN chmod +x ./build.sh && ./build.sh
+# Install frontend dependencies
+RUN yarn install --frozen-lockfile
+
+# Build frontend
+RUN yarn build
+
+# Build backend
+RUN dotnet publish src/Readarr.sln \
+    -c Release \
+    -o /src/_output \
+    --self-contained false \
+    -p:RuntimeIdentifiers=linux-x64
 
 # ---- runtime: minimal .NET runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:6.0
