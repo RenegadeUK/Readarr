@@ -25,7 +25,7 @@ RUN dotnet publish src/Readarr.sln \
     -c Release \
     -o /src/_output \
     --self-contained false \
-    -p:RuntimeIdentifiers=linux-x64
+    -r linux-x64
 
 # ---- runtime: minimal .NET runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:6.0
