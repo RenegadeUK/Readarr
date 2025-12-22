@@ -20,12 +20,18 @@ RUN yarn install --frozen-lockfile
 # Build frontend
 RUN yarn build
 
-# Build backend
-RUN dotnet publish src/Readarr.sln \
+# Restore and build backend
+RUN dotnet restore src/Readarr.sln
+
+RUN dotnet build src/Readarr.sln \
+    -c Release \
+    --no-restore
+
+RUN dotnet publish src/NzbDrone.Console/Readarr.Console.csproj \
     -c Release \
     -o /src/_output \
-    --self-contained false \
-    -r linux-x64
+    --no-build \
+    --no-restore
 
 # ---- runtime: minimal .NET runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:6.0
