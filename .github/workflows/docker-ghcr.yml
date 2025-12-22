@@ -31,5 +31,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/readarr:develop
-            ghcr.io/${{ github.repository_owner }}/readarr:${{ github.sha }}
+            ghcr.io/renegadeuk/readarr:develop
+            ghcr.io/renegadeuk/readarr:${{ github.sha }}
