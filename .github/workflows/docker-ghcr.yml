@@ -34,4 +34,5 @@ jobs:
           push: true
           tags: |
             ghcr.io/renegadeuk/readarr:develop
+            ghcr.io/renegadeuk/readarr:develop-sqlite
             ghcr.io/renegadeuk/readarr:${{ github.sha }}
