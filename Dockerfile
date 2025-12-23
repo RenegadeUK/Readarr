@@ -12,17 +12,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && npm i -g yarn \
  && rm -rf /var/lib/apt/lists/*
 
-COPY . .
+COPY package.json yarn.lock ./
+COPY src/ ./src/
+
+# Restore backend dependencies first
+RUN dotnet restore src/Readarr.sln
 
 # Install frontend dependencies
 RUN yarn install --frozen-lockfile
 
-# Build frontend
+# Copy remaining files
+COPY . .
+
+# Build frontend first (may generate files needed by backend)
 RUN yarn build
 
-# Restore and build backend
-RUN dotnet restore src/Readarr.sln
-
+# Build backend
 RUN dotnet build src/Readarr.sln \
     -c Release \
     --no-restore
