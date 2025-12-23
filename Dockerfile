@@ -15,10 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy everything
 COPY . .
 
-# Use the build script - it handles everything correctly
+# Use the build script - build only linux-x64 to save disk space
+# Set RID and FRAMEWORK to build only the platform we need for Docker
 RUN set -eux; \
     chmod +x ./build.sh; \
-    bash -x ./build.sh
+    FRAMEWORK=net6.0 RID=linux-x64 bash -x ./build.sh
 
 # ---- runtime: minimal .NET runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
@@ -29,8 +30,8 @@ RUN groupadd -g 1000 readarr && \
 
 WORKDIR /app
 
-# Copy built application
-COPY --from=build /src/_output/ /app/
+# Copy only the linux-x64 build output (we only built this platform)
+COPY --from=build /src/_artifacts/linux-x64/net6.0/Readarr/ /app/
 
 # Set permissions
 RUN chown -R readarr:readarr /app
