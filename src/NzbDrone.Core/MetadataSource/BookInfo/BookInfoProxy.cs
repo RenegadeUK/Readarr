@@ -521,28 +521,28 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var authors = (resource.Authors ?? new List<AuthorResource>()).Select(MapAuthorMetadata).ToDictionary(x => x.ForeignAuthorId, x => x);
             var series = (resource.Series ?? new List<SeriesResource>()).Select(MapSeries).ToList();
 
-            foreach (var work in resource.Works ?? new List<WorkResource>())
+        foreach (var work in resource.Works ?? new List<WorkResource>())
+        {
+            var book = MapBook(work);
+            var bookResources = work?.Books ?? new List<BookResource>();
+            var bookWithContributors = bookResources
+                .Where(b => b.Contributors?.Any() ?? false)
+                .OrderByDescending(b => b.AverageRating * b.RatingCount)
+                .FirstOrDefault();
+
+            if (bookWithContributors == null)
             {
-                var book = MapBook(work);
-                var books = work?.Books ?? new List<BookResource>();
-                var bookWithContributors = books
-                    .Where(b => b.Contributors?.Any() ?? false)
-                    .OrderByDescending(b => b.AverageRating * b.RatingCount)
-                    .FirstOrDefault();
-                
-                if (bookWithContributors == null)
-                {
-                    continue;
-                }
-                
-                var authorId = bookWithContributors.Contributors.First().ForeignId.ToString();
-
-                AddDbIds(authorId, book, authors);
-
-                books.Add(book);
+                continue;
             }
 
-            MapSeriesLinks(series, books, resource.Series ?? new List<SeriesResource>());
+            var authorId = bookWithContributors.Contributors.First().ForeignId.ToString();
+
+            AddDbIds(authorId, book, authors);
+
+            books.Add(book);
+        }
+
+        MapSeriesLinks(series, books, resource.Series ?? new List<SeriesResource>());
 
             return books;
         }
@@ -853,7 +853,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 if (seriesDict.TryGetValue(s.ForeignId.ToString(), out var curr))
                 {
-                    curr.LinkItems = (s.LinkItems ?? new List<SeriesBookLinkResource>()).Where(x => x.ForeignWorkId != 0 && bookDict.ContainsKey(x.ForeignWorkId.ToString())).Select(l => new SeriesBookLink
+                    curr.LinkItems = (s.LinkItems ?? new List<SeriesWorkLinkResource>()).Where(x => x.ForeignWorkId != 0 && bookDict.ContainsKey(x.ForeignWorkId.ToString())).Select(l => new SeriesBookLink
                     {
                         Book = bookDict[l.ForeignWorkId.ToString()],
                         Series = curr,
@@ -1003,7 +1003,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 .Where(x => x.Contributors?.Any() ?? false)
                 .OrderByDescending(x => x.RatingCount * x.AverageRating)
                 .FirstOrDefault();
-            
+
             return bookWithContributors?.Contributors?.FirstOrDefault()?.ForeignId ?? 0;
         }
     }
