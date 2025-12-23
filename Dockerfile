@@ -16,7 +16,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY . .
 
 # Use the build script - it handles everything correctly
-RUN chmod +x ./build.sh && ./build.sh
+RUN set -eux; \
+    chmod +x ./build.sh; \
+    bash -x ./build.sh
 
 # ---- runtime: minimal .NET runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
