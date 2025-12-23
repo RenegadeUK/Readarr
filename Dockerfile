@@ -24,6 +24,11 @@ RUN set -eux; \
 # ---- runtime: minimal .NET runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 
+# Install runtime dependencies
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libsqlite3-0 \
+ && rm -rf /var/lib/apt/lists/*
+
 # Create app user
 RUN groupadd -g 1000 readarr && \
     useradd -u 1000 -g readarr -d /app -s /usr/sbin/nologin readarr
