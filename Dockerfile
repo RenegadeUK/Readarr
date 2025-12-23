@@ -12,43 +12,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && npm i -g yarn \
  && rm -rf /var/lib/apt/lists/*
 
-COPY package.json yarn.lock ./
-COPY src/ ./src/
-
-# Restore backend dependencies first
-RUN dotnet restore src/Readarr.sln
-
-# Install frontend dependencies
-RUN yarn install --frozen-lockfile
-
-# Copy remaining files
+# Copy everything
 COPY . .
 
-# Build frontend first (may generate files needed by backend)
-RUN yarn build
-
-# Build backend
-RUN dotnet build src/Readarr.sln \
-    -c Release \
-    --no-restore
-
-RUN dotnet publish src/NzbDrone.Console/Readarr.Console.csproj \
-    -c Release \
-    -o /src/_output \
-    --no-build \
-    --no-restore
+# Use the build script - it handles everything correctly
+RUN chmod +x ./build.sh && ./build.sh
 
 # ---- runtime: minimal .NET runtime ----
-FROM mcr.microsoft.com/dotnet/aspnet:6.0
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 
 # Create app user
 RUN groupadd -g 1000 readarr && \
-    useradd -u 1000 -g readarr -d /app -s /bin/bash readarr
+    useradd -u 1000 -g readarr -d /app -s /usr/sbin/nologin readarr
 
-WORKDIR /app/readarr/bin
+WORKDIR /app
 
 # Copy built application
-COPY --from=build /src/_output/ ./
+COPY --from=build /src/_output/ /app/
 
 # Set permissions
 RUN chown -R readarr:readarr /app
